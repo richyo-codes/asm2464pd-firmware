@@ -707,14 +707,19 @@ static void u4lb_set_link_gen_width(uint8_t param) {  /* a840 */
       REG_CPU_MODE_NEXT &= 0x1F;
     }
   }
+  /* PR #81 (a86b682e): Gen4 equalization does not complete on this board's
+   * channel -- the LTSSM wastes time in failed speed-change retries and the
+   * link never reaches L0.  The direct PCIe path caps at Gen3 (B403 bit0 = 1);
+   * the tunnel path must do the same instead of clearing the cap for gen>=3. */
+  REG_TUNNEL_CTRL_B403 = (uint8_t)((REG_TUNNEL_CTRL_B403 & 0xFE) | 0x01);
   if (gen < 3) {
-    REG_TUNNEL_CTRL_B403 = (uint8_t)((REG_TUNNEL_CTRL_B403 & 0xFE) | 0x01);
     P1_WR(P1_LINK_GEN_40B0, (uint8_t)((uint8_t)(gen + 1) | (uint8_t)(P1_RD(P1_LINK_GEN_40B0) & 0xF0)));
   } else {
-    REG_TUNNEL_CTRL_B403 &= 0xFE;
     P1_WR(P1_LINK_GEN_40B0, (uint8_t)((P1_RD(P1_LINK_GEN_40B0) & 0xF0) | 0x04));
   }
-  width_code = 0;
+  /* PR #81 (a86b682e): the direct path negotiates x2 for signal margin on this
+   * board.  lane==2 previously fell through leaving width_code 0 (uncapped x4). */
+  width_code = PCIE_LINK_WIDTH_x2;
   if (lane < 3) {
     if (lane == 1) width_code = 0x0C;
     else if (lane == 0) width_code = 0x0E;

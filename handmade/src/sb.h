@@ -1255,14 +1255,19 @@ static void sb_lane_bond_complete_tunnel_up(void) {
 }
 
 static void sb_pcie_tunnel_setup_if_cl0(void) {
-  if (u4_boot.tunnel_up_done) return;
-  if (((SB_RD(SB_LANE_CL(0)) & 0x0F) != 2) || ((SB_RD(SB_LANE_CL(1)) & 0x0F) != 2)) return;
-
-  u4_boot.tunnel_up_done = 1;
+  if (u4_boot.pcie_tunnel_done) return;
+  /* Both lanes must have been SEEN at CL==2.  Do not re-read SB_LANE_CL here: CL==2 is a
+   * transient edge and the lanes have already settled to 7 by the time this runs, so the
+   * original live-register poll never fired and the PCIe tunnel was never brought up. */
+  if ((u4_boot.cl0_latch & 0x03) != 0x03) return;
+  u4_boot.pcie_tunnel_done = 1;
   u4lb_pcie_tunnel_setup(1);
   u4lb_pcie_link_enable();
-  REG_PCIE_LANE_CTRL_C659 |= PCIE_LANE_CTRL_ENABLE;
+  /* PR #81 (a86b682e), order-critical: start link training FIRST, then enable
+   * the lanes.  Writing C659 before E764 wedges the LTSSM in Config (0x4C).
+   * The direct path at main.c:104-107 does E764=0x1C then C659|=0x01. */
   REG_PHY_TIMER_CTRL_E764 = PHY_TIMER_PCIE_TRAIN_USB4;
+  REG_PCIE_LANE_CTRL_C659 |= PCIE_LANE_CTRL_ENABLE;
 }
 
 static void sb_channel_connect_service(void) {
@@ -1487,8 +1492,10 @@ static void sb_router_event_handler(void) {
       uint8_t bit = (uint8_t)(1u << lane);
       if (!(SB_RD(SB_CL0_EVENT) & bit)) continue;
       SB_WR(SB_CL0_EVENT, bit);
-      uart_puts(lane == 0 ? "\r\nL0:CL0 " : "\r\nL1:CL0 ");
-      uart_puthex(SB_RD(SB_LANE_CL(lane)) & 0x0F);
+      { uint8_t clv = (uint8_t)(SB_RD(SB_LANE_CL(lane)) & 0x0F);
+        uart_puts(lane == 0 ? "\r\nL0:CL0 " : "\r\nL1:CL0 ");
+        uart_puthex(clv);
+        if (clv == 2) u4_boot.cl0_latch |= bit; }
       SB_WR(SB_CL0_ACK, (uint8_t)((SB_RD(SB_CL0_ACK) & ~bit) | bit));
       if (!(u4_work_buf[WB_LANE_EN] & (uint8_t)(1u << (lane ^ 1))) || ((SB_RD(SB_LANE_CL(lane ^ 1)) & 0x0F) == 2))
         SB_WR(SB_PEER_CL0, (uint8_t)((SB_RD(SB_PEER_CL0) & 0xDF) | 0x20));

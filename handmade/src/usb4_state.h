@@ -173,6 +173,16 @@ typedef struct {
     uint8_t pd_seen;
     uint8_t sb_asserted;
     uint8_t tunnel_up_done;  /* e52d */
+    /* Separate one-shot for sb_pcie_tunnel_setup_if_cl0().  It previously shared
+     * tunnel_up_done with sb_lane_bond_complete_tunnel_up(); since sb.h:1449 runs
+     * before sb.h:1501 in the same handler pass, the route-ack path claimed the
+     * flag and the PCIe bring-up (link enable, PERST deassert, E764/C659 training)
+     * never executed -- host saw "Card present" then "No link". */
+    uint8_t pcie_tunnel_done;
+    /* Bitmask of lanes that have been OBSERVED at CL==2 (bit0=lane0, bit1=lane1).
+     * CL==2 is a transient edge: the lanes settle to 7 shortly after, so polling the
+     * live SB_LANE_CL register in sb_pcie_tunnel_setup_if_cl0() always missed it. */
+    uint8_t cl0_latch;
 } u4_boot_scratch_t;
 
 #define U4_XDATA_BYTES(sym) ((volatile __xdata uint8_t *)&(sym))

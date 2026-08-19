@@ -609,7 +609,7 @@ void main(void) {
       /* After the 1s timeout commits USB4 mode on a USB3-only host (where PD
        * never arrives), reset into USB3-direct mode.  Gated on !pd_seen
        * so the USB4 card never enters this path. */
-      if (u4_entered_usb_mode && !usb4_usb_inited && !u4_boot.pd_seen) {
+      if (u4_entered_usb_mode && !usb4_usb_inited && !u4_boot.pd_seen && kicks >= 8) {
         usb4_fallback_to_usb3();
       }
       /* On the USB4 card, after the sideband connection is fully established
@@ -675,7 +675,7 @@ void main(void) {
        * power-cycling the device before the PD contract completes. */
       { static uint8_t pd_settle = 0;
         if (!u4_boot.pd_seen) {
-          if (pd_settle < 12) { pd_settle++; }
+          if (pd_settle < 4) { pd_settle++; }
           else if (kicks < 8) { pd_attach_hard_reset(); kicks++; pd_settle = 0; }
         }
       }

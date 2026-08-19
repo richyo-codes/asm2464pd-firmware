@@ -872,6 +872,8 @@ static void usb4_state_prepare(void) {
   u4_boot.pd_seen = 0;
   u4_boot.sb_asserted = 0;
   u4_boot.tunnel_up_done = 0;
+  u4_boot.pcie_tunnel_done = 0;
+  u4_boot.cl0_latch = 0;
 }
 
 static void usb4_policy_enable(void) {
