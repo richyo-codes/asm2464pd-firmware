@@ -6,7 +6,12 @@
 #define MODE_FLAG_USB3_DIRECT  0x04u  /* bit 2: USB3 direct mode (no USB4 tunnel) */
 #define MODE_FLAG_FULL_COMMIT  0x40u  /* bit 6: full mode-entry commit (power event + USB int mask clear) */
 #define MODE_FLAG_VDM_ACK      0x80u  /* bit 7: VDM-ACK policy enabled */
+/* Boot mode.  Overridable from the Makefile so a USB3-only smoke image can be built
+ * without editing sources:  make CFLAGS_EXTRA='-DUSB4_MODE_FLAGS=USB4_MODE_USB3_DIRECT'
+ * That image is what the USB3 regression suite (handmade/test*.py) runs against. */
+#ifndef USB4_MODE_FLAGS
 #define USB4_MODE_FLAGS        (MODE_FLAG_ROUTE_MASK | MODE_FLAG_USB3_DIRECT | MODE_FLAG_VDM_ACK)
+#endif
 #define USB4_MODE_USB3_DIRECT  MODE_FLAG_USB3_DIRECT
 #define IS_USB4()              (u4_cfg.mode_flag & (MODE_FLAG_ROUTE_MASK | MODE_FLAG_VDM_ACK))
 
