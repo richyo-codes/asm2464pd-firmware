@@ -530,6 +530,11 @@ void int1_isr(void) __interrupt(1) {
  * observed 279ms while cutting USB3 bring-up on a USB3-only host from 12.23s to
  * ~8s. Erring long is deliberate: firing early costs the PCIe tunnel entirely
  * (no eGPU), firing late only costs seconds. */
+/* Main-loop ticks (sleep(500) each) to wait before Hard Reset kicks. The first kick is
+ * deliberately faster than subsequent ones -- see the use site. */
+#define PD_FIRST_KICK_TICKS 1
+#define PD_SETTLE_TICKS     4
+
 #define USB3_FALLBACK_TICKS 4
 
 static void usb4_fallback_to_usb3(void) {
@@ -697,11 +702,15 @@ void main(void) {
       }
       if (u4_boot.sb_asserted) { uint32_t b; for (b = 0; b < 60000UL; b++) { __asm nop __endasm; } }
       else             { sleep(500); }
-      /* Give the host a settle window before each Hard Reset kick. Repeated immediate kicks can keep
-       * power-cycling the device before the PD contract completes. */
+      /* Settle window before a Hard Reset kick. The original comment -- "repeated immediate
+       * kicks can keep power-cycling the device before the PD contract completes" -- is about
+       * kicks in SEQUENCE. Before the FIRST kick there is no prior kick to recover from, and
+       * the 1s sender-response timeout has already expired, so the full window buys nothing
+       * and costs 2s on EVERY boot of BOTH host types. Kept in full between later kicks. */
       { static uint8_t pd_settle = 0;
         if (!u4_boot.pd_seen) {
-          if (pd_settle < 4) { pd_settle++; }
+          uint8_t need = (kicks == 0) ? PD_FIRST_KICK_TICKS : PD_SETTLE_TICKS;
+          if (pd_settle < need) { pd_settle++; }
           else if (kicks < 8) { pd_attach_hard_reset(); kicks++; pd_settle = 0; }
         }
       }
