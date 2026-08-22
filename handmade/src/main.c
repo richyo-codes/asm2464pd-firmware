@@ -515,6 +515,23 @@ void int1_isr(void) __interrupt(1) {
   DPX = saved_dpx;
 }
 
+/* How long to wait for the host to send Enter_USB before giving up on USB4 and
+ * re-enumerating as plain USB3. One tick per main-loop sleep(500), so 4 ~= 2s.
+ *
+ * MEASURED 2026-08-22, rather than guessed:
+ *   - real USB4 host (Intel Maple Ridge): UART shows [Enter_USB] 279ms after
+ *     [BOOT], so the counter never increments at all there.
+ *   - USB3-only host (comma four): the host does full PD but never sends
+ *     Enter_USB, so this timeout is the ONLY way out. There is no signal that
+ *     distinguishes "not yet" from "never" -- Enter_USB is host-initiated
+ *     (pd.h: pd_handle_enter_usb) -- which is why a deadline is the right shape.
+ *
+ * The previous value of 12 (~6s) was never measured. 4 keeps ~7x margin over the
+ * observed 279ms while cutting USB3 bring-up on a USB3-only host from 12.23s to
+ * ~8s. Erring long is deliberate: firing early costs the PCIe tunnel entirely
+ * (no eGPU), firing late only costs seconds. */
+#define USB3_FALLBACK_TICKS 4
+
 static void usb4_fallback_to_usb3(void) {
   uart_puts("[USB4 fallback]\n");
   usb4_skip_magic = USB4_SKIP_MAGIC;
@@ -631,7 +648,7 @@ void main(void) {
         uart_puts("[CDRV ok]");
       }
       if (u4_boot.pd_seen && !u4_pd.enter_usb_accepted && !u4_boot.sb_asserted) {
-        if (u4_pd.usb3_fallback_flag || usb4_fallback_ticks >= 12) {
+        if (u4_pd.usb3_fallback_flag || usb4_fallback_ticks >= USB3_FALLBACK_TICKS) {
           usb4_fallback_to_usb3();
           continue;
         } else {
