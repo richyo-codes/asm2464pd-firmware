@@ -573,6 +573,15 @@ void main(void) {
   uart_puthex(u4_cfg.mode_flag);
   uart_puts("]\n");
   u4_entered_usb_mode = 0;
+  /* u4_cfg lives in XDATA, and XDATA is never zeroed. crt0.s clears internal RAM
+   * only (mov r0,#0xff / djnz r0) and then `ljmp _main`, jumping straight past
+   * SDCC's GSINIT chain -- which is generated (GSINIT2/GSINIT4 hold
+   * __mcs51_genRAMCLEAR) but never entered. That is deliberate
+   * -- usb4_skip_magic relies on XDATA surviving the CPU reset the USB3 fallback
+   * performs -- but it means route_mode is otherwise indeterminate on a cold boot
+   * and STALE from the previous run after that reset. Everything gating on
+   * (route_mode & 0x87) would then be reading leftovers. */
+  u4_cfg.route_mode = 0;
 
   if (IS_USB4()) {
     usb4_state_prepare();
