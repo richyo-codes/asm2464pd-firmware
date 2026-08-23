@@ -567,7 +567,7 @@ static void u4lb_pcie_tunnel_arm(void) {
 static void u4lb_pcie_link_enable(void) {  /* e4ea */
   if (!(REG_PCIE_LANE_CTRL_C659 & 0x01)) {
     u4lb_tunnel_pwron_train();
-    REG_PCIE_LANE_CTRL_C659 = (uint8_t)(REG_PCIE_CTRL_B402 & 0xFE);
+    REG_PCIE_LANE_CTRL_C659 = (uint8_t)(REG_PCIE_LANE_CTRL_C659 & 0xFE);  /* was: read B402, write C659 */
   }
   u4lb_cpu_ext_kick();
   u4lb_pcie_tunnel_arm();
@@ -599,10 +599,17 @@ static void u4lb_link_phy_reconfig(void) {  /* d90e */
 
 static void u4lb_tunnel_event_dispatch(uint8_t assert) {  /* d855 */
   uint8_t p1508 = P1_RD(P1_USB4_TUNNEL_EVENT_STATUS_1508);
+  if (p1508) { uart_puts("[TEV "); uart_puthex(p1508); uart_puts(" rm="); uart_puthex(u4_cfg.route_mode); uart_puts("]"); }
   if (p1508 & 0x10) {
-    if (u4_cfg.route_mode & 0x81) { P1_WR(P1_USB4_TUNNEL_EVENT_STATUS_1508, 0x10); u4lb_pcie_link_enable(); }
+    /* ACK UNCONDITIONALLY: these bits are W1C.  Acking inside the gate meant a
+     * gated-off event stayed pending forever, blocking this else-if chain and
+     * preventing u4lb_pcie_link_enable() -- which releases PERST -- from ever
+     * running.  Host symptom: pciehp "Card present" then "No link". */
+    P1_WR(P1_USB4_TUNNEL_EVENT_STATUS_1508, 0x10);
+    if (u4_cfg.route_mode & 0x81) { uart_puts("[LnkEn]"); u4lb_pcie_link_enable(); }
   } else if (p1508 & 0x08) {
-    if (u4_cfg.route_mode & 0x81) { P1_WR(P1_USB4_TUNNEL_EVENT_STATUS_1508, 0x08); u4lb_pcie_tunnel_pwroff(); }
+    P1_WR(P1_USB4_TUNNEL_EVENT_STATUS_1508, 0x08);
+    if (u4_cfg.route_mode & 0x81) { u4lb_pcie_tunnel_pwroff(); }
   } else if (p1508 & 0x04) {
     P1_WR(P1_USB4_TUNNEL_EVENT_STATUS_1508, 0x04);
     u4lb_pcie_tunnel_pwron();
@@ -617,10 +624,18 @@ static void u4lb_tunnel_event_dispatch(uint8_t assert) {  /* d855 */
       phy_cc10_cmd_wait(1, 0, 0xCF);
       REG_PCIE_CTRL_B402 = (uint8_t)(REG_PCIE_CTRL_B402 & 0xFE);
     }
+  } else if (p1508) {
+    P1_WR(P1_USB4_TUNNEL_EVENT_STATUS_1508, p1508);  /* never leave a bit pending */
   }
 }
 
 static void u4lb_tunnel_pwron_train(void) {
+  /* Stock gate: bits 0 and 7 are the USB4 route bits.  0x04 is deliberately
+   * excluded -- it is MODE_FLAG_USB3_DIRECT, "USB3 direct, no USB4 tunnel", so
+   * there is no tunnel to train in that state.  This looked too narrow until the
+   * real cause turned up in pd.h: a PD sender-response timeout that also fires
+   * long after USB4 is up was overwriting a live route (0x01) with that marker,
+   * which gated this off and left PERST asserted. */
   if ((u4_cfg.route_mode & 0x81) != 0) {
     u4lb_rxpll_train();
     REG_HDDPC_CTRL = (uint8_t)((REG_HDDPC_CTRL & 0xDF) | 0x20);
