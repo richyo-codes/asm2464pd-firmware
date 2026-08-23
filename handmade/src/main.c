@@ -585,7 +585,7 @@ void main(void) {
    * -- usb4_skip_magic relies on XDATA surviving the CPU reset the USB3 fallback
    * performs -- but it means route_mode is otherwise indeterminate on a cold boot
    * and STALE from the previous run after that reset. Everything gating on
-   * (route_mode & 0x87) would then be reading leftovers. */
+   * (route_mode & 0x81) would then be reading leftovers. */
   u4_cfg.route_mode = 0;
 
   if (IS_USB4()) {

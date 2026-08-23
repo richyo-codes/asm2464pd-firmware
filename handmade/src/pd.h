@@ -268,7 +268,14 @@ static void cc_pd_timer_tick(void) {
   if (REG_CPU_DMA_INT & 0x02) {                 /* CC91.1: 1s sender-response timeout -> commit USB4 mode */
     REG_CPU_DMA_INT = 0x02;
     uart_puts("[1 sec time out]\n");
-    u4_cfg.route_mode = 0x04;
+    /* Fall back to USB3-direct only if no USB4 route was ever established.  This
+       timeout also fires long after a successful USB4 entry -- see the trace where
+       it lands after both lanes reach CL0 -- and overwriting a live route (0x01)
+       with the USB3-direct marker left the tunnel-event dispatch gated off, so
+       PERST was never released.  pd_handle_enter_usb() already guards its own
+       write of this value the same way. */
+    if ((u4_cfg.route_mode & MODE_FLAG_ROUTE_MASK) == 0)
+      u4_cfg.route_mode = MODE_FLAG_USB3_DIRECT;
     u4_entered_usb_mode = usb4_mode_entry_commit();
   }
   if (REG_XFER_DMA_CFG & 0x02) {                 /* CC99.1: role-dependent reset */
@@ -761,7 +768,7 @@ static void pd_handle_enter_usb(void) {
   mode_flags = u4_cfg.mode_flag;
   if ((mode_flags & MODE_FLAG_ROUTE_MASK) == 0) {
     REG_CMD_CFG_E405 &= 0xF8;
-    u4_cfg.route_mode = 4;
+    u4_cfg.route_mode = MODE_FLAG_USB3_DIRECT;
     usb4_mode_entry_commit();
     u4_entered_usb_mode = mode;
   } else if (mode == 2 && u4_pd.role_state == 0) {
@@ -769,7 +776,7 @@ static void pd_handle_enter_usb(void) {
     if (cable_cur) {
       uart_puts("[Enter_USB 4]");
       u4_pd.enter_usb_accepted = 1;
-      u4_cfg.route_mode |= 0x04;
+      u4_cfg.route_mode |= MODE_FLAG_USB3_DIRECT;
       u4_pd.enter_usb_reinit_gate = 1;
     }
   } else {
