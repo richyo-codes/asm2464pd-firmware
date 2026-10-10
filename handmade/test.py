@@ -25,7 +25,12 @@ def ctrl_write(dev, addr, val):
 class TestDevice(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
-    cls.dev = USB3(VID, PID, 0x81, 0x83, 0x02, 0x04, use_bot=True)
+    # tinygrad's USB3 takes a libusb device pointer, not (vid, pid) -- the old
+    # signature was migrated in flash.py:20 but never here, so these tests have
+    # been uncollectable against current tinygrad.
+    devs = USB3.list_devices(VID, PID)
+    assert devs, f"no {VID:04X}:{PID:04X} found"
+    cls.dev = USB3(devs[0][0], 0x81, 0x83, 0x02, 0x04, use_bot=True)
     #BLK = 0x40
     #regs = b''.join(ctrl_read(cls.dev, i, BLK) for i in range(0x9000, 0x9400, BLK))
     #print("\n"+hexdump(regs, 'return'), file=sys.stderr)
