@@ -14,6 +14,7 @@ import os
 import sys
 import subprocess
 import tempfile
+import shutil
 from pathlib import Path
 import pytest
 
@@ -22,15 +23,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'emulate'))
 
 from disasm8051 import Disassembler
 
+SDAS8051 = shutil.which('sdas8051') or shutil.which('sdcc-sdas8051')
+SDLD = shutil.which('sdld') or shutil.which('sdcc-sdld')
+
 
 # Module-level fixture to check for SDCC
 @pytest.fixture(scope="module")
 def check_sdcc():
     """Verify SDCC is installed."""
-    try:
-        subprocess.run(['sdas8051', '-h'], capture_output=True, check=False)
-    except FileNotFoundError:
-        pytest.skip("SDCC not found. Install with: sudo apt-get install sdcc")
+    if SDAS8051 is None or SDLD is None:
+        pytest.skip("SDCC assembler or linker not found. Install the sdcc package.")
 
 
 def disassemble_bank(data, base_addr, bank_name):
@@ -146,7 +148,7 @@ def assemble_with_sdcc(asm_code, output_dir, bank_name, base_addr):
     # Assemble with sdas8051
     print(f"  Assembling {bank_name}...")
     result = subprocess.run(
-        ['sdas8051', '-plosgff', str(rel_file), str(asm_file)],
+        [SDAS8051, '-plosgff', str(rel_file), str(asm_file)],
         capture_output=True,
         text=True
     )
@@ -160,7 +162,7 @@ def assemble_with_sdcc(asm_code, output_dir, bank_name, base_addr):
     # Link to Intel HEX
     print(f"  Linking {bank_name}...")
     result = subprocess.run(
-        ['sdld', '-i', str(ihx_file), str(rel_file)],
+        [SDLD, '-i', str(ihx_file), str(rel_file)],
         capture_output=True,
         text=True
     )

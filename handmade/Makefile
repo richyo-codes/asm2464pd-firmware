@@ -1,8 +1,9 @@
 # Handmade firmware Makefile
 
 # Compiler and tools
-CC = sdcc
-AS = sdas8051
+# Fedora prefixes SDCC tools; command-line CC/AS overrides still take precedence.
+CC = $(shell command -v sdcc || command -v sdcc-sdcc || echo sdcc)
+AS = $(shell command -v sdas8051 || command -v sdcc-sdas8051 || echo sdas8051)
 
 # Compiler flags
 CFLAGS = -mmcs51 --model-small --opt-code-speed --allow-unsafe-read

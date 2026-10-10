@@ -4,6 +4,7 @@ build
 .*.swp
 uartexact
 __pycache__
+.venv/
 *.asm
 ghidra-asmedia-8051
 python/Software

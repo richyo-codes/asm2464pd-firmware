@@ -1,0 +1,5 @@
+# Allow the active local session to access the FTDI adapter and ASM controller.
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="0403", ATTR{idProduct}=="6015", TAG+="uaccess"
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="174c", ATTR{idProduct}=="2464", TAG+="uaccess"
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="174c", ATTR{idProduct}=="2463", TAG+="uaccess"
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="3801", ATTR{idProduct}=="0001", TAG+="uaccess"

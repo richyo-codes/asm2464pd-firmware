@@ -3,8 +3,20 @@
 import sys
 import struct
 
-from tinygrad.helpers import getenv
-from tinygrad.runtime.support.usb import USB3
+if len(sys.argv) != 2 or sys.argv[1] in ('-h', '--help'):
+  print(f"Usage: {sys.argv[0]} firmware.bin", file=sys.stderr)
+  sys.exit(0 if len(sys.argv) == 2 and sys.argv[1] in ('-h', '--help') else 2)
+
+try:
+  from tinygrad.helpers import getenv
+  from tinygrad.runtime.support.usb import USB3
+except ModuleNotFoundError as exc:
+  if exc.name != 'tinygrad': raise
+  sys.exit("tinygrad is required. Activate .venv (source .venv/bin/activate); "
+           "see README.md for installation instructions.")
+
+with open(sys.argv[1], 'rb') as infile:
+   fw = bytearray(infile.read())
 
 SUPPORTED_CONTROLLERS = [
   (0x174C, 0x2464),
@@ -22,9 +34,6 @@ for vendor, device in SUPPORTED_CONTROLLERS:
   except RuntimeError: pass
 if dev is None:
   raise RuntimeError('Could not open controller. You can set USBDEV environment variable to your device\'s vendor and device ID (e.g., USBDEV="174C:2464")')
-
-with open(sys.argv[1], 'rb') as infile:
-   fw = bytearray(infile.read())
 
 part1 = fw[:0xff00]
 part2 = fw[0xff00:]
