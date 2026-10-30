@@ -1880,6 +1880,9 @@
 #define REG_XFER_DMA_ADDR_HI    XDATA_REG8(0xCC8B)  /* Transfer DMA address high */
 
 #define REG_CPU_DMA_CTRL_CC90   XDATA_REG8(0xCC90)  /* CPU DMA control */
+/* The USB4 boot policy arms CC90/CC92/CC93 once at startup. CC91 bit 1 is
+ * acknowledged with a write of 0x02. Its late expiry is NOT a link-down
+ * indication and must not recommit the boot fallback after USB4 entry. */
 #define REG_CPU_DMA_INT         XDATA_REG8(0xCC91)  /* CPU DMA interrupt status */
 #define   CPU_DMA_INT_ACK        0x02  // Bit 1: Acknowledge DMA interrupt
 #define   CPU_DMA_INT_TRIGGER    0x04  // Bit 2: Trigger DMA

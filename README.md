@@ -45,3 +45,45 @@ The SRAM read needs a write from the PCIe device side at 0x822000 to trigger the
 You can see an example of this working / speed test with `pcie/test_sram_verify.py`
 
 See CLAUDE.md for more stuff like how to run the emulator.
+
+## USB4 connection diagnostics
+
+Capture UART at 921600 baud alongside the host kernel journal when reproducing
+connection failures. The firmware emits `[EUDO aabbccdd]` on Enter_USB, with
+bytes in RX buffer order (least significant byte first).
+
+Event-driven snapshots have this format; all fields are hexadecimal bytes:
+
+```text
+[U4D seq events route ltssm link sys train lanes perst power cl0 tunnel]
+```
+
+`seq` wraps after FF. `events` is a bitmask: 01 link enable, 02 power off,
+04 sideband disconnect, 08 PD timeout, 10 PCIe training start.
+
+| Field | Snapshot source |
+| --- | --- |
+| route | Firmware route mode |
+| ltssm | PCIe LTSSM state |
+| link | Bank 1 PCIe link info: high nibble lane count, low nibble generation |
+| sys | E765 system flags (bit 1 indicates PCIe link up) |
+| train | E764 training control |
+| lanes | C659 PCIe lane control |
+| perst | B480 PERST control |
+| power | C656 HDDPC control |
+| cl0 | Firmware CL0 latch |
+| tunnel | Firmware PCIe tunnel completion flag |
+
+Handlers queue event bits; the main loop snapshots state with interrupts briefly
+masked, then restores interrupts and the register bank before printing. Events
+can coalesce, and values describe the state when main runs, not necessarily at
+the instant of the event. Existing interrupt-handler UART messages may interleave
+with a snapshot. These records are diagnostic clues, not proof that a GPU has
+enumerated or that PCIe Gen4 is active.
+
+The fallback reset now reports `[USB4 fallback timeout]`. Test the entry deadline,
+late timeout handling, and snapshot mechanics without hardware using:
+
+```bash
+.venv/bin/python -m pytest test/test_usb4_policy.py test/test_route_mode_invariants.py -q
+```

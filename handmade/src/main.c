@@ -49,6 +49,7 @@ static uint32_t __xdata dma_dwords;    /* total dwords remaining for streaming t
 #include "pcie_pio.h"
 #include "pcie_tuning.h"
 #include "i2c.h"
+#include "usb4_diag.h"
 #include "pd.h"
 #include "sb.h"
 #include "usb4.h"
@@ -539,7 +540,7 @@ void int1_isr(void) __interrupt(1) {
 #define USB3_FALLBACK_TICKS 4
 
 static void usb4_fallback_to_usb3(void) {
-  uart_puts("[USB4 fallback]\n");
+  uart_puts("[USB4 fallback timeout]\n");
   usb4_skip_magic = USB4_SKIP_MAGIC;
   REG_CPU_RESET = CPU_RESET_TRIGGER;
   while (1) { }
@@ -579,6 +580,9 @@ void main(void) {
   uart_puthex(u4_cfg.mode_flag);
   uart_puts("]\n");
   u4_entered_usb_mode = 0;
+  /* crt0 deliberately leaves XDATA intact across CPU reset. */
+  u4_diag_pending = 0;
+  u4_diag_sequence = 0;
   /* u4_cfg lives in XDATA, and XDATA is never zeroed. crt0.s clears internal RAM
    * only (mov r0,#0xff / djnz r0) and then `ljmp _main`, jumping straight past
    * SDCC's GSINIT chain -- which is generated (GSINIT2/GSINIT4 hold
@@ -630,6 +634,7 @@ void main(void) {
   uint8_t usb4_usb_inited = 0;
   while (1) {
     if (IS_USB4()) {
+      usb4_diag_flush();
       /* Poll cc_pd_timer_tick from the main loop when PD hasn't connected yet.
        * The 1s DMA timeout arms the USB4 mode entry fallback for USB3-only hosts
        * where PD never arrives.  Once PD is seen, INT1 services cc_pd_timer_tick. */
@@ -663,9 +668,14 @@ void main(void) {
         uart_puts("[CDRV ok]");
       }
       if (u4_boot.pd_seen && !u4_pd.enter_usb_accepted && !u4_boot.sb_asserted) {
-        if (u4_pd.usb3_fallback_flag || usb4_fallback_ticks >= USB3_FALLBACK_TICKS) {
-          usb4_fallback_to_usb3();
-          continue;
+        /* Discover_Modes and EUDO capabilities select a route; neither is a
+         * request to abandon USB4. Give the host the full entry deadline. */
+        if (usb4_fallback_ticks >= USB3_FALLBACK_TICKS) {
+          CRITICAL_ENTER();
+          /* INT1 may have accepted Enter_USB since the outer check. */
+          if (!u4_pd.enter_usb_accepted && !u4_boot.sb_asserted)
+            usb4_fallback_to_usb3();
+          CRITICAL_EXIT();
         } else {
           usb4_fallback_ticks++;
         }

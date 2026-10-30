@@ -107,7 +107,9 @@ typedef struct {
      * 3 Request sent (await Accept), 4 Accepted (await PS_RDY),
      * 0x0D Enter_USB pending, 0x0E Data_Reset pending (5/6 transient Source_Cap). */
     uint8_t msg_substate;
-    uint8_t usb3_fallback_flag;
+    /* Stock route selector: set by Discover_Modes and EUDO DP support.
+     * This is NOT a request for USB3 fallback. Keep it out of deadline policy. */
+    uint8_t route_select_hint;
     uint8_t rx_slot_idx;
     uint8_t rx_num_data_obj;
     uint8_t tx_msgid_counter;

@@ -26,13 +26,18 @@ SUPPORTED_CONTROLLERS = [
 if getenv("USBDEV", ""): SUPPORTED_CONTROLLERS.insert(0, (int(x, 16) for x in getenv("USBDEV", "").split(":")))
 
 dev = None
+open_errors = []
 for vendor, device in SUPPORTED_CONTROLLERS:
   try:
     if (devs:=USB3.list_devices(vendor, device)):
       dev = USB3(devs[0][0], 0x81, 0x83, 0x02, 0x04, use_bot=True)
       break
-  except RuntimeError: pass
+  except RuntimeError as exc:
+    open_errors.append(f'{vendor:04x}:{device:04x}: {exc}')
 if dev is None:
+  if open_errors:
+    sys.exit('Could not open controller:\n' + '\n'.join(open_errors) +
+             '\nFor USB permission errors, install the udev rules described in README.md and reconnect the device.')
   raise RuntimeError('Could not open controller. You can set USBDEV environment variable to your device\'s vendor and device ID (e.g., USBDEV="174C:2464")')
 
 part1 = fw[:0xff00]

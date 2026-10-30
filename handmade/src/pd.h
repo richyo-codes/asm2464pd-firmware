@@ -133,7 +133,7 @@ static void pd_internal_state_init(void) {
   u4_pd.eudo_mode_confirm = 0;
   u4_pd.confirm_input_cd = 0; u4_pd.confirm_input_ce = 0; u4_pd.confirm_input_cf = 0;
   u4_pd.bist_mode = 0;
-  u4_pd.usb3_fallback_flag = 0;
+  u4_pd.route_select_hint = 0;
   u4_pd.role_state = 0;
   cc_ctrl_enable_events();
 }
@@ -267,6 +267,7 @@ static void cc_pd_timer_tick(void) {
   }
   if (REG_CPU_DMA_INT & 0x02) {                 /* CC91.1: 1s sender-response timeout -> commit USB4 mode */
     REG_CPU_DMA_INT = 0x02;
+    u4_diag_pending |= U4_DIAG_PD_TIMEOUT;
     uart_puts("[1 sec time out]\n");
     /* Fall back to USB3-direct only if no USB4 route was ever established.  This
        timeout also fires long after a successful USB4 entry -- see the trace where
@@ -274,9 +275,11 @@ static void cc_pd_timer_tick(void) {
        with the USB3-direct marker left the tunnel-event dispatch gated off, so
        PERST was never released.  pd_handle_enter_usb() already guards its own
        write of this value the same way. */
-    if ((u4_cfg.route_mode & MODE_FLAG_ROUTE_MASK) == 0)
+    if (!u4_pd.enter_usb_accepted && !u4_boot.sb_asserted &&
+        (u4_cfg.route_mode & MODE_FLAG_ROUTE_MASK) == 0) {
       u4_cfg.route_mode = MODE_FLAG_USB3_DIRECT;
-    u4_entered_usb_mode = usb4_mode_entry_commit();
+      u4_entered_usb_mode = usb4_mode_entry_commit();
+    }
   }
   if (REG_XFER_DMA_CFG & 0x02) {                 /* CC99.1: role-dependent reset */
     uint8_t role = u4_pd.role_state;
@@ -757,9 +760,14 @@ static void pd_handle_enter_usb(void) {
   uint8_t mode = (uint8_t)((eudo3 & 0x70) >> 4);
   uint8_t mode_flags;
 
+  /* One compact payload per negotiation; byte order matches the RX buffer. */
+  uart_puts("[EUDO ");
+  uart_puthex(PR(vdo0)); uart_puthex(eudo1);
+  uart_puthex(eudo2); uart_puthex(eudo3); uart_putc(']');
+
   u4_routerop_flag = (uint8_t)((eudo1 & 0x40) >> 6);
   u4_routerop_opcode = (uint8_t)(eudo1 >> 7);
-  u4_pd.usb3_fallback_flag = (uint8_t)(u4_routerop_opcode & 1);
+  u4_pd.route_select_hint = (uint8_t)(u4_routerop_opcode & 1);
   u4_routerop_op_len = (uint8_t)((eudo2 & 0x06) >> 1);
   u4_pd.eudo_mode_confirm = (uint8_t)(eudo2 >> 5);
   u4_routerop_port = mode;
@@ -843,7 +851,7 @@ static void vdm_tx_dispatch(void) {
       break;
     case VDM_CMD_DISCOVER_MODES:
       uart_puts("[Disc_Modes]");
-      u4_pd.usb3_fallback_flag = 1;
+      u4_pd.route_select_hint = 1;
       vdm_build_discover_modes();
       break;
     case VDM_CMD_ENTER_MODE:

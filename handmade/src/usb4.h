@@ -207,7 +207,7 @@ static void usb4_connect_u4(void) {
   } else {
     u4_cfg.route_mode = (u4_cfg.mode_flag & MODE_FLAG_ROUTE_MASK);
     if (u4_cfg.dp_alt_mode == 0x03) {
-      if (u4_pd.usb3_fallback_flag == 0) { u4_cfg.route_mode = 2; u4_cfg.lane_gate_sel = 1; }
+      if (u4_pd.route_select_hint == 0) { u4_cfg.route_mode = 2; u4_cfg.lane_gate_sel = 1; }
       else                 { u4_cfg.route_mode = 1; u4_cfg.lane_gate_sel = 2; }
     }
     if (u4_cfg.route_mode & 0x02) {

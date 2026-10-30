@@ -3,6 +3,7 @@
 
 
 static void boot_phy_set_link_mode(uint8_t param);  /* dd42 */
+static void u4c_uart_drain_wait(void);  /* defined in usb4.h */
 
 static uint8_t P1_REG8_rd(uint16_t off) {
   uint8_t v;
@@ -1268,6 +1269,7 @@ static void sb_pcie_tunnel_setup_if_cl0(void) {
    * The direct path at main.c:104-107 does E764=0x1C then C659|=0x01. */
   REG_PHY_TIMER_CTRL_E764 = PHY_TIMER_PCIE_TRAIN_USB4;
   REG_PCIE_LANE_CTRL_C659 |= PCIE_LANE_CTRL_ENABLE;
+  u4_diag_pending |= U4_DIAG_TRAIN;
 }
 
 static void sb_channel_connect_service(void) {
@@ -1469,6 +1471,7 @@ static void sb_router_event_handler(void) {
     if (!(cs & 0x02)) {
       if (SB_RD(SB_CONNECT_EVENT) & 0x02) {
         uart_puts("\r\n[===SB Dis===]\r\n");
+        u4_diag_pending |= U4_DIAG_SB_DIS;
         SB_WR(SB_CONNECT_EVENT, 0x02); SB_WR(SB_CONNECT_EVENT, 0x01);
         SB_WR(SB_CONNECT_STATE, (uint8_t)(SB_RD(SB_CONNECT_STATE) & 0xFE));
         SB_WR(SB_CONNECT_STATE, (uint8_t)((SB_RD(SB_CONNECT_STATE) & 0xFD) | 0x02));

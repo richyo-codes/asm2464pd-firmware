@@ -500,6 +500,7 @@ static void u4lb_transport_reinit(uint8_t skip_lane) {  /* b031 */
 }
 
 static void u4lb_pcie_tunnel_pwroff(void) {  /* ee29 */
+  u4_diag_pending |= U4_DIAG_POWER_OFF;
   REG_PCIE_LANE_CTRL_C659 &= 0xFE;
   REG_PCIE_CTRL_B402 = (uint8_t)(REG_PCIE_CTRL_B402 & 0xFE);
   u4lb_pcie_tunnel_reset();
@@ -565,6 +566,7 @@ static void u4lb_pcie_tunnel_arm(void) {
 }
 
 static void u4lb_pcie_link_enable(void) {  /* e4ea */
+  u4_diag_pending |= U4_DIAG_LINK_ENABLE;
   if (!(REG_PCIE_LANE_CTRL_C659 & 0x01)) {
     u4lb_tunnel_pwron_train();
     REG_PCIE_LANE_CTRL_C659 = (uint8_t)(REG_PCIE_LANE_CTRL_C659 & 0xFE);  /* was: read B402, write C659 */

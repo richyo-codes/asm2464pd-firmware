@@ -40,7 +40,7 @@ TARGET = $(BUILD_DIR)/firmware
 HEX = $(TARGET).ihx
 BIN = $(TARGET).bin
 
-.PHONY: all clean flash wrapped uflash nflash
+.PHONY: all clean flash wrapped uflash nflash FORCE
 
 all: $(BIN)
 	@echo "Built: $(BIN)"
@@ -53,8 +53,16 @@ $(OBJ_DIR):
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
+# Make does not otherwise notice changes to command-line flags or tool paths.
+# Preserve the stamp's mtime when the configuration is unchanged.
+FORCE:
+
+$(OBJ_DIR)/build-config: FORCE | $(OBJ_DIR)
+	@printf '%s\n' '$(subst ','"'"',$(CC))' '$(subst ','"'"',$(AS))' '$(subst ','"'"',$(CFLAGS))' '$(subst ','"'"',$(LDFLAGS))' > $@.tmp
+	@if cmp -s $@.tmp $@; then rm -f $@.tmp; else mv $@.tmp $@; fi
+
 # Assemble startup code
-$(CRT0_OBJ): $(CRT0_SRC) | $(OBJ_DIR)
+$(CRT0_OBJ): $(CRT0_SRC) $(OBJ_DIR)/build-config | $(OBJ_DIR)
 	$(AS) -l -o -s $<
 	mv $(SRC_DIR)/crt0.rel $(CRT0_OBJ)
 	-mv $(SRC_DIR)/crt0.lst $(OBJ_DIR)/ 2>/dev/null || true
@@ -62,14 +70,14 @@ $(CRT0_OBJ): $(CRT0_SRC) | $(OBJ_DIR)
 
 # Compile main source. Header deps generated as a side effect via `sdcc -MM`
 # (one extra preprocessor pass; SDCC has no -MMD/-MD).
-$(MAIN_OBJ): $(MAIN_SRC) | $(OBJ_DIR)
+$(MAIN_OBJ): $(MAIN_SRC) $(OBJ_DIR)/build-config | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 	@$(CC) $(CFLAGS) -MM $< 2>/dev/null | sed 's|^[^:]*:|$@:|' > $(OBJ_DIR)/main.d
 
 -include $(OBJ_DIR)/main.d
 
 # Link object files to Intel HEX
-$(HEX): $(OBJS) | $(BUILD_DIR)
+$(HEX): $(OBJS) $(OBJ_DIR)/build-config | $(BUILD_DIR)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS) -o $@
 
 # Convert Intel HEX to binary
