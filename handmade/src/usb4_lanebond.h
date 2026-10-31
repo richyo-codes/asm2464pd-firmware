@@ -741,6 +741,10 @@ static void u4lb_set_link_gen_width(uint8_t param) {  /* a840 */
     if (lane == 1) width_code = 0x0C;
     else if (lane == 0) width_code = 0x0E;
   }
+#if PCIE_EXPERIMENT_X4
+  /* Exercise all downstream lanes independently of USB4 lane count. */
+  width_code = PCIE_LINK_WIDTH_x4;
+#endif
   u4_cfg.lb_width_rate_code = width_code;
   REG_TUNNEL_LINK_STATUS = (uint8_t)((REG_TUNNEL_LINK_STATUS & 0xF0) | width_code);
   u4lb_pcie_set_link_width(width_code);

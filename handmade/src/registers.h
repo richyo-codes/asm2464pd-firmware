@@ -1140,6 +1140,16 @@
 #define REG_TUNNEL_LINK_STATUS  XDATA_REG8(0xB431)  // Tunnel link training status (stock=0x0C when trained)
 #define   PCIE_LINK_WIDTH_x2    0xC
 #define   PCIE_LINK_WIDTH_x1    0xE
+#define   PCIE_LINK_WIDTH_x4    0x0
+/* Opt-in downstream PCIe width experiment; does not remove the Gen3 cap.
+ * Build: make -C handmade wrapped CFLAGS_EXTRA=-DPCIE_EXPERIMENT_X4=1
+ * Default remains the validated x2 policy. */
+#ifndef PCIE_EXPERIMENT_X4
+#define PCIE_EXPERIMENT_X4 0
+#endif
+#if PCIE_EXPERIMENT_X4 != 0 && PCIE_EXPERIMENT_X4 != 1
+#error PCIE_EXPERIMENT_X4 must be 0 or 1
+#endif
 #define REG_POWER_CTRL_B432     XDATA_REG8(0xB432)  // Low bits reach 0x07 once the USB4 PCIe-down path is powered
 #define REG_TUNNEL_CTRL_B403    XDATA_REG8(0xB403)  // Tunnel control (stock=0x01 when trained, set by PHY events)
 #define REG_PCIE_LINK_STATE     XDATA_REG8(0xB434)  // PCIe link state (low nibble = lane enable mask)

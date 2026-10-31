@@ -98,6 +98,9 @@ static void pcie_power_on(void) {
    * lanes 3..0).  Gen3 x2 measures ~1.66 GB/s, the same as Gen3 x4 — the
    * ASM completer caps ~1.68 GB/s either way — with better signal margin. */
   REG_TUNNEL_LINK_STATUS = PCIE_LINK_WIDTH_x2;
+#if PCIE_EXPERIMENT_X4
+  REG_TUNNEL_LINK_STATUS = PCIE_LINK_WIDTH_x4;
+#endif
   /* Start link training. 0x1C keeps the training engine retrying until the
    * downstream device answers (hardware clears bit 4 if it gives up).  The
    * stock E764 sequence ending at 0x19 is single-shot: it aborts when the
