@@ -7,10 +7,15 @@
 #define U4_DIAG_SB_DIS       0x04
 #define U4_DIAG_PD_TIMEOUT   0x08
 #define U4_DIAG_TRAIN        0x10
+#define U4_DIAG_BOND_POLICY  0x20
 
 static volatile __xdata uint8_t u4_diag_pending;
 static __xdata uint8_t u4_diag_sequence;
 static __xdata uint8_t u4_diag_snapshot[11];
+#if USB4_EXPERIMENT_BOND_DESC
+/* Captured by the main-loop routing state machine before descriptor writes. */
+static __xdata uint8_t u4_diag_bond_policy[5];
+#endif
 
 /* Call only from main with DPX=0 (snapshot storage is bank-0 XDATA).
  * Capture a consistent banked-register view with IRQs
@@ -49,6 +54,16 @@ static void usb4_diag_flush(void) {
     uart_puthex(u4_diag_snapshot[i]);
   }
   uart_puts("]\n");
+#if USB4_EXPERIMENT_BOND_DESC
+  if (u4_diag_snapshot[0] & U4_DIAG_BOND_POLICY) {
+    uart_puts("[U4B");
+    for (i = 0; i < sizeof(u4_diag_bond_policy); i++) {
+      uart_putc(' ');
+      uart_puthex(u4_diag_bond_policy[i]);
+    }
+    uart_puts("]\n");
+  }
+#endif
 }
 
 #endif

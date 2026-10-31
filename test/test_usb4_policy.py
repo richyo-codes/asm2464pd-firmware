@@ -178,3 +178,45 @@ int main(void) {
   unsigned previous = pos; usb4_diag_flush(); assert(pos == previous);
 }
 ''')
+
+
+@pytest.mark.parametrize('enabled', [0, 1])
+def test_bond_descriptor_experiment_is_scoped(tmp_path, enabled):
+    helper = block('usb4_lanebond.h', 'static void u4lb_desc_apply_lanemask(void)')
+    run_c(tmp_path, f'#define USB4_EXPERIMENT_BOND_DESC {enabled}\n' + r'''
+uint8_t regs[256];
+uint8_t u4lb_desc0_lanemask, u4lb_desc1, u4lb_desc2, u4lb_desc3;
+#define DE_LANESEL 0x34
+#define DE_CTRL 0x35
+#define DE_OPCODE 0x36
+#define P12_RD(off) regs[off]
+#define P12_WR(off, value) (regs[off] = (value))
+''' + helper + r'''
+int main(void) {
+  for (unsigned target = 0; target < 256; target++) {
+    for (unsigned mask = 0; mask < 16; mask++) {
+      for (unsigned high = 0; high < 256; high += 16) {
+        regs[DE_LANESEL] = high | 15;
+        regs[DE_CTRL] = 0x41;
+        regs[DE_OPCODE] = target;
+        u4lb_desc0_lanemask = !!(mask & 1);
+        u4lb_desc1 = !!(mask & 2);
+        u4lb_desc2 = !!(mask & 4);
+        u4lb_desc3 = !!(mask & 8);
+        u4lb_desc_apply_lanemask();
+        if (USB4_EXPERIMENT_BOND_DESC && target == 0xd2 && mask == 2) {
+          assert(regs[DE_LANESEL] == (high | 2));
+          assert(regs[DE_CTRL] == 0x41);
+          assert(regs[DE_OPCODE] == 0xd2);
+        } else {
+          /* Keep the existing behavior for every other transaction. */
+          assert(regs[DE_LANESEL] == (high | 15));
+          assert(regs[DE_CTRL] == 0x81);
+          assert(regs[DE_OPCODE] == (0x80 | mask));
+        }
+      }
+    }
+  }
+  return 0;
+}
+''')

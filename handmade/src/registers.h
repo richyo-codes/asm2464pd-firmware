@@ -2499,6 +2499,13 @@
  */
 #define USB4_ADAPTER_PORT_CS_18          0x12u
 #define USB4_ADAPTER_PORT_CS_18_BE       0x00000100UL
+/* Narrow bonding-descriptor experiment; default retains validated behavior. */
+#ifndef USB4_EXPERIMENT_BOND_DESC
+#define USB4_EXPERIMENT_BOND_DESC 0
+#endif
+#if USB4_EXPERIMENT_BOND_DESC != 0 && USB4_EXPERIMENT_BOND_DESC != 1
+#error USB4_EXPERIMENT_BOND_DESC must be 0 or 1
+#endif
 /*
  * USB4 router native operation config-space dwords. The host writes CS_25
  * metadata and CS_26 with the OV bit set, then polls for firmware to clear OV.

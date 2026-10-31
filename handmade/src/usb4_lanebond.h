@@ -52,6 +52,16 @@ static void u4lb_desc_apply_lanemask(void) {  /* e00c */
   if (u4lb_desc1 != 0) m |= 2;
   if (u4lb_desc2 != 0) m |= 4;
   if (u4lb_desc3 != 0) m |= 8;
+#if USB4_EXPERIMENT_BOND_DESC
+  /* Only the PORT_CS_18.BE transaction: preserve its D2 destination and
+   * control, following stock e00c/a2ff. A global replacement of this helper
+   * broke enumeration; other descriptor contexts still need investigation. */
+  if (P12_RD(DE_OPCODE) == 0xD2 && u4lb_desc0_lanemask == 0 &&
+      u4lb_desc1 == 1 && u4lb_desc2 == 0 && u4lb_desc3 == 0) {
+    P12_WR(DE_LANESEL, (uint8_t)((P12_RD(DE_LANESEL) & 0xF0) | m));
+    return;
+  }
+#endif
   P12_WR(DE_LANESEL, (uint8_t)((P12_RD(DE_LANESEL) & 0xF0) | 0x0F));
   a = (uint8_t)((P12_RD(DE_CTRL) & 0x3F) | 0x80); P12_WR(DE_CTRL, a);
   P12_WR(DE_OPCODE, (uint8_t)((a & 0xF0) | m));
@@ -264,6 +274,14 @@ static void u4lb_cm_conn_routing_setup(void) {
     }
   }
 
+#if USB4_EXPERIMENT_BOND_DESC
+  u4_diag_bond_policy[0] = u4_host_desc[HD_WIDTH];
+  u4_diag_bond_policy[1] = u4_work_buf[WB_LANE_CAP];
+  u4_diag_bond_policy[2] = u4_work_buf[WB_LANE_EN];
+  u4_diag_bond_policy[3] = u4_sb.lane_width_latch1;
+  u4_diag_bond_policy[4] = u4_cfg.lane_gate_sel;
+  u4_diag_pending |= U4_DIAG_BOND_POLICY;
+#endif
   u4lb_emit_lane0_desc(u4_sb.lane_width_latch1);
   u4lb_emit_lane1_desc(u4_pd.connect_route_latch);
   u4lb_emit_route_desc();
