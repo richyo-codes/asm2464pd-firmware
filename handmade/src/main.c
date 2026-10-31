@@ -98,9 +98,9 @@ static void pcie_power_on(void) {
                                                // ready to answer Detect for ~20-50ms
   REG_CPU_CTRL_CA81 = 0x0E;                    // clear bit 0, required for training
   REG_CPU_MODE_NEXT = 0x21;
-  /* x2 link: disable lanes 2,3 (B431 is a lane-disable mask, bits 3..0 =
-   * lanes 3..0).  Gen3 x2 measures ~1.66 GB/s, the same as Gen3 x4 — the
-   * ASM completer caps ~1.68 GB/s either way — with better signal margin. */
+  /* Default x2 policy: disable lanes 2,3 (B431 bits 3..0 = lanes 3..0).
+   * Earlier completer benchmarks favored x2; the opt-in x4 path has since
+   * passed short GPU tests on Chestnut. See pcie/notes/ for measured results. */
   REG_TUNNEL_LINK_STATUS = PCIE_LINK_WIDTH_x2;
 #if PCIE_EXPERIMENT_X4
   REG_TUNNEL_LINK_STATUS = PCIE_LINK_WIDTH_x4;

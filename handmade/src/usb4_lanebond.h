@@ -724,10 +724,9 @@ static void u4lb_set_link_gen_width(uint8_t param) {  /* a840 */
       REG_CPU_MODE_NEXT &= 0x1F;
     }
   }
-  /* PR #81 (a86b682e): Gen4 equalization does not complete on this board's
-   * channel -- the LTSSM wastes time in failed speed-change retries and the
-   * link never reaches L0.  The direct PCIe path caps at Gen3 (B403 bit0 = 1);
-   * the tunnel path must do the same instead of clearing the cap for gen>=3. */
+  /* Preserve the default Gen3 cap from earlier training work (PR #81).
+   * Chestnut has trained at Gen4 with the explicit opt-in below; those
+   * earlier channel failures are not a universal device limitation. */
   REG_TUNNEL_CTRL_B403 = (uint8_t)((REG_TUNNEL_CTRL_B403 & 0xFE) | 0x01);
 #if PCIE_EXPERIMENT_GEN4
   REG_TUNNEL_CTRL_B403 &= (uint8_t)~0x01;

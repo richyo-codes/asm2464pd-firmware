@@ -1085,12 +1085,12 @@
  *   B403=0 -> bank1 0x408C LNKCAP mirror reads 0x007B6C44 (max Gen4 x4)
  *   B403=1 -> bank1 0x408C LNKCAP mirror reads 0x007B6C43 (max Gen3 x4)
  * Stock firmware sets this during bring-up and thus negotiates Gen3.
- * Shipping configuration is B403=1 (Gen3 cap): Gen4 equalization does not
- * complete on this board's channel in any tested configuration, and with
- * Gen4 advertised the LTSSM wastes time in failed speed-change retries
- * (info flapping Gen1<->Gen3).  Keeping the cap gives a clean, stable
- * Gen3 link.  Since the ASM completer caps throughput ~1.68 GB/s anyway,
- * Gen3 x2 (B431=0x0C) is the intended operating point.
+ * Default configuration is B403=1 (Gen3 cap), retained from earlier boards
+ * whose Gen4 equalization failed. This is not a universal hardware limit:
+ * Chestnut + RX7900XTX negotiated Gen4 x4 with equalization complete on
+ * 2026-10-31 using the opt-in speed/width experiments. The earlier ~1.68 GB/s
+ * completer measurements do not establish a USB4 tunnel bandwidth ceiling.
+ * See pcie/notes/chestnut-gen4-experiment.md for validation and limitations.
  * B404: bits 0-3 R/W. Reads 0x01 cold and trained.
  */
 #define REG_PCIE_TUNNEL_CTRL    XDATA_REG8(0xB401)  // PCIe tunnel control
