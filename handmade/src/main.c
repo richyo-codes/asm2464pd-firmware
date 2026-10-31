@@ -85,6 +85,10 @@ static void pcie_power_off(void) {
 static void pcie_power_on(void) {
   REG_PCIE_PERST_CTRL  = PCIE_PERST_ASSERT;    // assert PERST#
   REG_TUNNEL_CTRL_B403 = 0x01;                 // cap advertised speed at Gen3 (intended)
+#if PCIE_EXPERIMENT_GEN4
+  REG_TUNNEL_CTRL_B403 = 0x00;
+  P1_WR(P1_LINK_GEN_40B0, (uint8_t)((P1_RD(P1_LINK_GEN_40B0) & 0xF0) | 0x04));
+#endif
   REG_TUNNEL_LINK_STATE &= (uint8_t)~0x01;     // clear tunnel link state (stock keeps bit 2)
   DPX = 0x01; REG_PHY_TLP_ROUTING |= PHY_TLP_ROUTING_ENABLE; DPX = 0x00;
   /* No rxphy lane commits (0x78AF-0x7BAF): they latch the lane config and

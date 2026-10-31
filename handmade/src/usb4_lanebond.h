@@ -729,11 +729,16 @@ static void u4lb_set_link_gen_width(uint8_t param) {  /* a840 */
    * link never reaches L0.  The direct PCIe path caps at Gen3 (B403 bit0 = 1);
    * the tunnel path must do the same instead of clearing the cap for gen>=3. */
   REG_TUNNEL_CTRL_B403 = (uint8_t)((REG_TUNNEL_CTRL_B403 & 0xFE) | 0x01);
+#if PCIE_EXPERIMENT_GEN4
+  REG_TUNNEL_CTRL_B403 &= (uint8_t)~0x01;
+  P1_WR(P1_LINK_GEN_40B0, (uint8_t)((P1_RD(P1_LINK_GEN_40B0) & 0xF0) | 0x04));
+#else
   if (gen < 3) {
     P1_WR(P1_LINK_GEN_40B0, (uint8_t)((uint8_t)(gen + 1) | (uint8_t)(P1_RD(P1_LINK_GEN_40B0) & 0xF0)));
   } else {
     P1_WR(P1_LINK_GEN_40B0, (uint8_t)((P1_RD(P1_LINK_GEN_40B0) & 0xF0) | 0x04));
   }
+#endif
   /* PR #81 (a86b682e): the direct path negotiates x2 for signal margin on this
    * board.  lane==2 previously fell through leaving width_code 0 (uncapped x4). */
   width_code = PCIE_LINK_WIDTH_x2;

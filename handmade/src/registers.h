@@ -1150,6 +1150,14 @@
 #if PCIE_EXPERIMENT_X4 != 0 && PCIE_EXPERIMENT_X4 != 1
 #error PCIE_EXPERIMENT_X4 must be 0 or 1
 #endif
+/* Separate speed experiment: advertise and target Gen4, allowing hardware
+ * training to fall back. This changes no equalization/PHY tuning values. */
+#ifndef PCIE_EXPERIMENT_GEN4
+#define PCIE_EXPERIMENT_GEN4 0
+#endif
+#if PCIE_EXPERIMENT_GEN4 != 0 && PCIE_EXPERIMENT_GEN4 != 1
+#error PCIE_EXPERIMENT_GEN4 must be 0 or 1
+#endif
 #define REG_POWER_CTRL_B432     XDATA_REG8(0xB432)  // Low bits reach 0x07 once the USB4 PCIe-down path is powered
 #define REG_TUNNEL_CTRL_B403    XDATA_REG8(0xB403)  // Tunnel control (stock=0x01 when trained, set by PHY events)
 #define REG_PCIE_LINK_STATE     XDATA_REG8(0xB434)  // PCIe link state (low nibble = lane enable mask)
