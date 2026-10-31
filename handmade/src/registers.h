@@ -2464,6 +2464,24 @@
 #define P1_USB4_BOOT_TAIL_EVENT_1603    0x1603u  /* d894 boot-tail W1C event register */
 #define P1_USB4_DROM_SHADOW_0240        0x0240u  /* router DROM shadow base; bytes served by native DROM_READ */
 /*
+ * Host-visible USB4 adapter configuration (DWORD offsets relative to the
+ * adapter's USB4 capability, NOT page-1 byte addresses). Linux checks
+ * PORT_CS_18.BE before attempting lane bonding, separately from the PHY
+ * capability's supported-width mask. BE is also distinct from the PHY
+ * LANE_ADP_CS_1.LB command bit (bit 15).
+ *
+ * Chestnut capture 2026-10-31: port1 USB4 capability base 0xC0,
+ * dword 0xD2 = 0x00000010 (BE clear), while PHY CS0 = 0x003C01C0
+ * advertises dual-width support. This fails Linux's USB4 bonding eligibility
+ * check. The ASM local register/descriptor that supplies BE is not yet
+ * established; do not use these offsets with P1_RD/P1_WR or force BE without
+ * confirming the physical lane-training prerequisites.
+ * Reference: Linux drivers/thunderbolt/{tb_regs.h,usb4.c},
+ * usb4_switch_lane_bonding_possible().
+ */
+#define USB4_ADAPTER_PORT_CS_18          0x12u
+#define USB4_ADAPTER_PORT_CS_18_BE       0x00000100UL
+/*
  * USB4 router native operation config-space dwords. The host writes CS_25
  * metadata and CS_26 with the OV bit set, then polls for firmware to clear OV.
  * Responses are returned in CS_9+ with CS_25 holding the response dword count.
